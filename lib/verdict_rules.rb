@@ -4,5 +4,8 @@ require_relative "verdict_rules/version"
 
 module VerdictRules
   class Error < StandardError; end
-  # Your code goes here...
+  
+  class Engine
+    
+  end
 end
