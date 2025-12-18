@@ -1,5 +1,27 @@
 # frozen_string_literal: true
 
+if ENV.fetch("COVERAGE", "true") == "true"
+  require "simplecov"
+  SimpleCov.start do
+    # Código que NÃO deve contar no coverage
+    add_filter "/spec/"
+    add_filter "/.bundle"
+
+    # Agrupa o relatórios
+    add_group "Bibliotecas", "/lib/"
+    add_group "Executáveis", "/bin/"
+
+    # Coverage mínimo aceitável
+    minimum_coverage 90
+
+    # Define a cobertura mínima por arquivo
+    minimum_coverage_by_file 80
+
+    # Formatos de report
+    formatter SimpleCov::Formatter::HTMLFormatter
+  end
+end
+
 require "verdict_rules"
 
 RSpec.configure do |config|
