@@ -95,4 +95,149 @@ RSpec.describe VerdictRules::Engine do
       }.to raise_error(FrozenError)
     end
   end
+
+  describe "gerenciamento de regras"do
+    describe "#add_rule" do
+      it "adiciona uma regra à engine" do
+        engine = described_class.new
+        rule = VerdictRules::Rule.new(
+          condition: ->(ctx) { ctx[:age] >= 18 },
+          action: :approve
+        )
+
+        expect { engine.add_rule(rule) }.not_to raise_error
+      end
+
+      it "aceita múltiplas regras" do
+        engine = described_class.new
+        age_rule = VerdictRules::Rule.new(
+          condition: ->(ctx) { ctx[:age] >= 18 },
+          action: :approve
+        )
+        verified_rule = VerdictRules::Rule.new(
+          condition: ->(ctx) { ctx[:verified] == true },
+          action: :grant_access
+        )
+
+        engine.add_rule(age_rule)
+        engine.add_rule(verified_rule)
+
+        expect(engine.rules.size).to eq(2)
+      end
+
+      it "retorna self para permitir chainig" do
+        engine = described_class.new
+        rule = VerdictRules::Rule.new(
+          condition: ->(ctx) { true },
+          action: :approve
+        )
+
+        result = engine.add_rule(rule)
+        expect(result).to be(engine)
+      end
+    end
+
+    describe "#rules" do
+      it "retorna array vazio quando não há regras" do
+        engine = described_class.new
+
+        expect(engine.rules).to eq([])
+      end
+
+      it "retorna array com as regras adicionadas" do
+        engine = described_class.new
+        rule = VerdictRules::Rule.new(
+          condition: ->(ctx) { true },
+          action: :approve
+        )
+
+        engine.add_rule(rule)
+        expect(engine.rules).to be([rule])
+      end
+    end
+
+    describe "#evaluate" do
+      it "retorna nil quando não há regras" do
+        engine = described_class.new({ age: 25 })
+
+        expect(engine.evaluate).to be_nil
+      end
+
+      it "retorna a action da primeira regra que satisfazer a condição" do
+        engine = described_class.new({ age: 25, country: "BR"})
+
+        engine.add_rule(
+          VerdictRules::Rule.new(
+            condition: ->(ctx) { ctx[:age] >= 18 },
+            action: :approve
+          )
+        )
+
+        expect(engine.evaluate).to eq(:approve)
+      end
+
+      it "retorna nil quando nenhuma regra bater" do
+        engine = described_class.new({ age: 16 })
+      
+        engine.add_rule(
+          VerdictRules::Rule.new(
+            condition: ->(ctx) { ctx[:age] >= 18 },
+            action: :approve
+          )
+        )
+        
+        expect(engine.evaluate).to be_nil
+      end
+
+      it "avalia apenas a primeira regra que bater" do
+        engine = described_class.new({ age: 25, verified: true })
+      
+        engine.add_rule(
+          VerdictRules::Rule.new(
+            condition: ->(ctx) { ctx[:age] >= 18 },
+            action: :approve_by_age
+          )
+        )
+        
+        engine.add_rule(
+          VerdictRules::Rule.new(
+            condition: ->(ctx) { ctx[:verified] == true },
+            action: :approve_by_verification
+          )
+        )
+        
+        # Deve retornar a primeira que bater
+        expect(engine.evaluate).to eq(:approve_by_age)
+      end
+
+      context "com múltiplas regras" do
+        it "avalia na ordem em que foram adicionadas" do
+          engine = described_class.new({ score: 75 })
+        
+          engine.add_rule(
+            VerdictRules::Rule.new(
+              condition: ->(ctx) { ctx[:score] >= 90 },
+              action: :excellent
+            )
+          )
+          
+          engine.add_rule(
+            VerdictRules::Rule.new(
+              condition: ->(ctx) { ctx[:score] >= 70 },
+              action: :good
+            )
+          )
+          
+          engine.add_rule(
+            VerdictRules::Rule.new(
+              condition: ->(ctx) { ctx[:score] >= 50 },
+              action: :average
+            )
+          )
+          
+          expect(engine.evaluate).to eq(:good)
+        end
+      end
+    end
+  end
 end
