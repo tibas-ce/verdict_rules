@@ -152,7 +152,7 @@ RSpec.describe VerdictRules::Engine do
         )
 
         engine.add_rule(rule)
-        expect(engine.rules).to be([rule])
+        expect(engine.rules).to eq([rule])
       end
     end
 

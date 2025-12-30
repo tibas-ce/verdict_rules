@@ -28,8 +28,8 @@ module VerdictRules
 
     def validate_arguments(condition, action)
       raise ArgumentError, "condition" if condition.nil?
-      raise ArgumentError, "action" if condition.nil?
-      raise ArgumentError, "condition must be a Proc" if condition.nil?
+      raise ArgumentError, "action" if action.nil?
+      raise ArgumentError, "condition must be a Proc" unless condition.is_a?(Proc)
     end
   end
 end
