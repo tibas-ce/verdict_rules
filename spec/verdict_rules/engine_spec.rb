@@ -157,85 +157,147 @@ RSpec.describe VerdictRules::Engine do
     end
 
     describe "#evaluate" do
-      it "retorna nil quando não há regras" do
+      it "retorna um Result" do
         engine = described_class.new({ age: 25 })
+        result = engine.evaluate
 
-        expect(engine.evaluate).to be_nil
+        expect(result).to be_a(VerdictRules::Result)
       end
 
-      it "retorna a action da primeira regra que satisfazer a condição" do
-        engine = described_class.new({ age: 25, country: "BR"})
+      context "quando não há regras" do
+        it "retorna Result com value nil e sem matched_rule" do
+          engine = described_class.new({ age: 25 })
+          result = engine.evaluate
 
-        engine.add_rule(
-          VerdictRules::Rule.new(
+          expect(result.value).to be_nil
+          expect(result.matched?).to be false
+          expect(result.matched_rule).to be_nil
+        end
+      end
+
+      context "quando uma regra bate" do
+        it "retorna Result com value e matched_rule" do
+          engine = described_class.new({ age: 25, country: "BR" })
+
+          rule = VerdictRules::Rule.new(
             condition: ->(ctx) { ctx[:age] >= 18 },
             action: :approve
           )
-        )
 
-        expect(engine.evaluate).to eq(:approve)
+          engine.add_rule(rule)
+          result = engine.evaluate
+
+          expect(result.value).to eq(:approve)
+          expect(result.matched?).to be true
+          expect(result.matched_rule).to eq(rule)
+        end
       end
 
-      it "retorna nil quando nenhuma regra bater" do
-        engine = described_class.new({ age: 16 })
-      
-        engine.add_rule(
-          VerdictRules::Rule.new(
-            condition: ->(ctx) { ctx[:age] >= 18 },
-            action: :approve
-          )
-        )
-        
-        expect(engine.evaluate).to be_nil
-      end
+      context "quando nenhuma regra bate" do
+        it "retorna Result com value nil e sem matched_rule" do
+          engine = described_class.new({ age: 16 })
 
-      it "avalia apenas a primeira regra que bater" do
-        engine = described_class.new({ age: 25, verified: true })
-      
-        engine.add_rule(
-          VerdictRules::Rule.new(
-            condition: ->(ctx) { ctx[:age] >= 18 },
-            action: :approve_by_age
+          engine.add_rule(
+            VerdictRules::Rule.new(
+              condition: ->(ctx) { ctx[:age] >= 18 },
+              action: :approve
+            )
           )
-        )
-        
-        engine.add_rule(
-          VerdictRules::Rule.new(
-            condition: ->(ctx) { ctx[:verified] == true },
-            action: :approve_by_verification
-          )
-        )
-        
-        # Deve retornar a primeira que bater
-        expect(engine.evaluate).to eq(:approve_by_age)
+
+          result = engine.evaluate
+
+          expect(result.value).to be_nil
+          expect(result.matched?).to be false
+          expect(result.matched_rule).to be_nil
+        end
       end
 
       context "com múltiplas regras" do
-        it "avalia na ordem em que foram adicionadas" do
+        it "retorna Result da primeira regra que bater" do
+          engine = described_class.new({ age: 25, verified: true })
+        
+          rule1 = VerdictRules::Rule.new(
+            condition: ->(ctx) { ctx[:age] >= 18 },
+            action: :approve_by_age
+          )
+          
+          rule2 = VerdictRules::Rule.new(
+            condition: ->(ctx) { ctx[:verified] == true },
+            action: :approve_by_verification
+          )
+          
+          engine.add_rule(rule1)
+          engine.add_rule(rule2)
+          
+          result = engine.evaluate
+          
+          expect(result.value).to eq(:approve_by_age)
+          expect(result.matched_rule).to eq(rule1)
+        end
+
+        it "permite identificar qual regra bateu através do Result" do
           engine = described_class.new({ score: 75 })
         
-          engine.add_rule(
-            VerdictRules::Rule.new(
-              condition: ->(ctx) { ctx[:score] >= 90 },
-              action: :excellent
-            )
+          excellent_rule = VerdictRules::Rule.new(
+            condition: ->(ctx) { ctx[:score] >= 90 },
+            action: :excellent
           )
           
-          engine.add_rule(
-            VerdictRules::Rule.new(
-              condition: ->(ctx) { ctx[:score] >= 70 },
-              action: :good
-            )
+          good_rule = VerdictRules::Rule.new(
+            condition: ->(ctx) { ctx[:score] >= 70 },
+            action: :good
           )
           
-          engine.add_rule(
-            VerdictRules::Rule.new(
-              condition: ->(ctx) { ctx[:score] >= 50 },
-              action: :average
-            )
+          average_rule = VerdictRules::Rule.new(
+            condition: ->(ctx) { ctx[:score] >= 50 },
+            action: :average
           )
           
-          expect(engine.evaluate).to eq(:good)
+          engine.add_rule(excellent_rule)
+          engine.add_rule(good_rule)
+          engine.add_rule(average_rule)
+          
+          result = engine.evaluate
+          
+          expect(result.value).to eq(:good)
+          expect(result.matched_rule).to eq(good_rule)
+          expect(result.matched_rule).not_to eq(excellent_rule)
+          expect(result.matched_rule).not_to eq(average_rule)
+        end
+      end
+
+      context "debugging e auditoria" do
+        it "permite inspecionar o resultado para debugging" do
+          engine = described_class.new({ age: 25 })
+
+          rule = VerdictRules::Rule.new(
+            condition: ->(ctx) { ctx[:age] >= 18 },
+            action: :approve
+          )
+
+          engine.add_rule(rule)
+          result = engine.evaluate
+
+          inspection = result.inspect
+          expect(inspection).to include("approve")
+          expect(inspection).to include("matched=true")
+        end
+
+        it "permite converter resultado para hash para logging" do
+          engine = described_class.new({ age: 18 })
+
+          rule = VerdictRules::Rule.new(
+            condition: ->(ctx) { ctx[:age] >= 18 },
+            action: :approve
+          )
+
+          engine.add_rule(rule)
+          result = engine.evaluate
+
+          hash = result.to_h
+          expect(hash[:value]).to eq(:approve)
+          expect(hash[:matched]).to be true
+          expect(hash[:matched_rule]).to eq(rule)
         end
       end
     end
