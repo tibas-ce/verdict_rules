@@ -28,11 +28,15 @@ module VerdictRules
     # Isso mantém a API simples e evita múltiplas formas de fornecer contexto.
     def evaluate
       rules.each do |rule|
-        result = rule.evaluate(context)
-        return result unless result.nil?
+        action = rule.evaluate(context)
+
+        unless action.nil?
+          return Result.new(value: action, matched_rule: rule)
+        end
       end
 
-      nil
+      # Nenhuma regra bateu
+      Result.new(value: nil, matched_rule: nil)
     end
 
     private
