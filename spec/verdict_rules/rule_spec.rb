@@ -1,4 +1,89 @@
 RSpec.describe VerdictRules::Rule do
+  describe "prioridade" do
+    it "aceita priority com argumento opcional" do
+      expect {
+        described_class.new(
+          condition: ->(ctx) { true },
+          action: :approve,
+          priority: 10
+        )
+    }.not_to raise_error
+    end
+
+    it "usa prioridade padrão 0 quando não fornecida" do
+      rule = described_class.new(
+          condition: ->(ctx) { true },
+          action: :approve
+        )
+
+      expect(rule.priority).to eq(0)
+    end
+
+    it "armazena a prioridade fornecida" do
+      rule = described_class.new(
+          condition: ->(ctx) { true },
+          action: :approve,
+          priority: 100
+        )
+
+      expect(rule.priority).to eq(100)
+    end
+
+    it "aceita prioridades negativas" do
+      rule = described_class.new(
+          condition: ->(ctx) { true },
+          action: :approve,
+          priority: -5
+        )
+
+      expect(rule.priority).to eq(-5)
+    end
+
+    it "valida que priority seja um número" do
+      expect {
+        described_class.new(
+          condition: ->(ctx) { true },
+          action: :approve,
+          priority: "high"
+        )
+    }.to raise_error(ArgumentError, /priority must be a number/)
+    end
+  end
+
+  describe "comparação de prioridades" do
+    it "permite comparar regras por prioridade" do
+      rule1 = described_class.new(
+        condition: ->(ctx) { true },
+        action: :approve,
+        priority: 1
+      )
+
+      rule2 = described_class.new(
+        condition: ->(ctx) { true },
+        action: :reject,
+        priority: 10
+      )
+
+      expect(rule2.priority).to be > rule1.priority
+    end
+
+    it "regras com a mesma prioridade são equivalentes em ordem" do
+      rule1 = described_class.new(
+        condition: ->(ctx) { true },
+        action: :approve,
+        priority: 5
+      )
+
+      rule2 = described_class.new(
+        condition: ->(ctx) { true },
+        action: :reject,
+        priority: 5
+      )
+
+      expect(rule1.priority).to eq(rule2.priority)
+    end
+  end
+
   describe "#initialize" do
     it "pode ser criada com condition e action" do
       condition = ->(ctx) { ctx[:age] >= 18 }
