@@ -156,6 +156,71 @@ RSpec.describe VerdictRules::Engine do
       end
     end
 
+    describe "ordenação por prioridade" do
+      it "ordena regras por prioridade (maior primeiro)" do
+        engine = described_class.new({ value: true })
+
+        low_priority = VerdictRules::Rule.new(
+          condition: ->(ctx) { ctx[:value] },
+          action: :low,
+          priority: 1
+        )
+
+        medium_priority = VerdictRules::Rule.new(
+          condition: ->(ctx) { ctx[:value] },
+          action: :medium,
+          priority: 5
+        )
+
+        high_priority = VerdictRules::Rule.new(
+          condition: ->(ctx) { ctx[:value] },
+          action: :high,
+          priority: 10
+        )
+
+        # Adiciona em ordem aleatória
+        engine.add_rule(low_priority)
+        engine.add_rule(high_priority)
+        engine.add_rule(medium_priority)
+
+        # Regras devem estar ordenadas por prioridade (maior primeiro)
+        expect(engine.rules[0]).to eq(high_priority)
+        expect(engine.rules[1]).to eq(medium_priority)
+        expect(engine.rules[2]).to eq(low_priority)
+      end
+
+      it "mantém ordem de inserção quando prioridades são iguais" do
+        engine = described_class.new({ value: true })
+
+        rule1 = VerdictRules::Rule.new(
+          condition: ->(ctx) { ctx[:value] },
+          action: :first,
+          priority: 5
+        )
+
+        rule2 = VerdictRules::Rule.new(
+          condition: ->(ctx) { ctx[:value] },
+          action: :second,
+          priority: 5
+        )
+
+        rule3 = VerdictRules::Rule.new(
+          condition: ->(ctx) { ctx[:value] },
+          action: :third,
+          priority: 5
+        )
+
+        engine.add_rule(rule1)
+        engine.add_rule(rule2)
+        engine.add_rule(rule3)
+
+        # Com mesma prioridade, ordem de inserção é mantida
+        expect(engine.rules[0]).to eq(rule1)
+        expect(engine.rules[1]).to eq(rule2)
+        expect(engine.rules[2]).to eq(rule3)
+      end
+    end
+
     describe "#evaluate" do
       it "retorna um Result" do
         engine = described_class.new({ age: 25 })
@@ -298,6 +363,148 @@ RSpec.describe VerdictRules::Engine do
           expect(hash[:value]).to eq(:approve)
           expect(hash[:matched]).to be true
           expect(hash[:matched_rule]).to eq(rule)
+        end
+      end
+
+      context "com prioridades" do
+        it "avalia regra de maior prioridade primeiro" do
+          engine = described_class.new({ age: 25, verified: true })
+
+          low_priority_rule = VerdictRules::Rule.new(
+            condition: ->(ctx) { ctx[:age] >= 18 },
+            action: :approved_by_age,
+            priority: 1
+          )
+
+          high_priority_rule = VerdictRules::Rule.new(
+            condition: ->(ctx) { ctx[:verified] },
+            action: :approved_by_verification,
+            priority: 10
+          )
+
+          # Adiciona em ordem reversa de prioridade
+          engine.add_rule(low_priority_rule)
+          engine.add_rule(high_priority_rule)
+
+          result = engine.evaluate
+
+          # Regra com maior prioridade vence
+          expect(result.value).to eq(:approved_by_verification)
+          expect(result.matched_rule).to eq(high_priority_rule)
+        end
+
+        it "ignora ordem de inserção quando prioridades são diferentes" do
+          engine = described_class.new({ status: :active })
+
+          first_added = VerdictRules::Rule.new(
+            condition: ->(ctx) { ctx[:status] == :active },
+            action: :first,
+            priority: 1
+          )
+
+          last_added = VerdictRules::Rule.new(
+            condition: ->(ctx) { ctx[:status] == :active },
+            action: :last,
+            priority: 100
+          )
+
+          engine.add_rule(first_added)
+          engine.add_rule(last_added)
+
+          result = engine.evaluate
+
+          expect(result.value).to eq(:last)
+          expect(result.matched_rule).to eq(last_added)
+        end
+
+        it "usa ordem de inserção como critério de desempate" do
+          engine = described_class.new({ value: 10 })
+
+          rule1 = VerdictRules::Rule.new(
+            condition: ->(ctx) { ctx[:value] >= 5 },
+            action: :rule1,
+            priority: 5
+          )
+
+          rule2 = VerdictRules::Rule.new(
+            condition: ->(ctx) { ctx[:value] >= 5 },
+            action: :rule2,
+            priority: 5
+          )
+
+          engine.add_rule(rule1)
+          engine.add_rule(rule2)
+
+          result = engine.evaluate
+
+          # Mesma prioridade: primeira adicionada vence
+          expect(result.value).to eq(:rule1)
+          expect(result.matched_rule).to eq(rule1)
+        end
+
+        it "permite prioridades negativas" do
+          engine = described_class.new({ value: true })
+
+          negative_priority = VerdictRules::Rule.new(
+            condition: ->(ctx) { ctx[:value] },
+            action: :negative,
+            priority: -10
+          )
+
+          zero_priority = VerdictRules::Rule.new(
+            condition: ->(ctx) { ctx[:value] },
+            action: :zero,
+            priority: 0
+          )
+
+          positive_priority = VerdictRules::Rule.new(
+            condition: ->(ctx) { ctx[:value] },
+            action: :positive,
+            priority: 10
+          )
+
+          engine.add_rule(negative_priority)
+          engine.add_rule(zero_priority)
+          engine.add_rule(positive_priority)
+        
+          result = engine.evaluate
+        
+          expect(result.value).to eq(:positive)
+        end
+
+        it "demonstra caso de negócio real: exceções têm prioridade" do
+          # Cenário: usuários verificados têm prioridade sobre idade
+          engine = described_class.new({ age: 25, verified: true, vip: true })
+
+          # Regra geral (prioridade baixa)
+          age_rule = VerdictRules::Rule.new(
+            condition: ->(ctx) { ctx[:age] >= 18 },
+            action: :standard_access,
+            priority: 1
+          )
+
+          # Regra especial (prioridade média)
+          verified_rule = VerdictRules::Rule.new(
+            condition: ->(ctx) { ctx[:verified] },
+            action: :verified_access,
+            priority: 5
+          )
+
+          # Regra VIP (prioridade alta)
+          vip_rule = VerdictRules::Rule.new(
+            condition: ->(ctx) { ctx[:vip] },
+            action: :vip_access,
+            priority: 10
+          )
+
+          engine.add_rule(age_rule)
+          engine.add_rule(verified_rule)
+          engine.add_rule(vip_rule)
+
+          result = engine.evaluate
+
+          expect(result.value).to eq(:vip_access)
+          expect(result.matched_rule).to eq(vip_rule)
         end
       end
     end
