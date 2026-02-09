@@ -50,7 +50,7 @@ RSpec.describe "VerdictRules DSL" do
 
       result = engine.rule do
           when_condition { |ctx| ctx[:age] >= 18 }
-          theN_action :approve
+          then_action :approve
         end
       
       expect(result).to eq(engine) 
