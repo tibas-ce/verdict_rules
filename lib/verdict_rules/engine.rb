@@ -55,7 +55,7 @@ module VerdictRules
     #   end
     # Retorna self para permitir chaining
     def rules(&block)
-      raise ArgumentError, "block required" unless block_given?
+      return @rules unless block_given?
 
       instance_eval(&block)
       self
