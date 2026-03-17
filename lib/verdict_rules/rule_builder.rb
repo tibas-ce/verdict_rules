@@ -3,7 +3,10 @@ module VerdictRules
     # Builder responsável por construir instâncias de Rule a partir da DSL
     # Encapsula validações e evita que a Engine lide com estado parcial
     # Usado internamente pelo Engine#rule e Engine#rules
-    def initialize(priority: 0)  
+    # name: identificador opcional da regra
+    # priority: define a ordem de avaliação (maior primeiro)
+    def initialize(name: nil, priority: 0)  
+      @name = name
       @priority = priority
       @condition = nil
       @action = nil
@@ -11,26 +14,27 @@ module VerdictRules
 
     # Define a condição da regra
     # O bloco a ser chamado posteriormente com o contexto da Engine
-    # Exibe bloco para garantir previsibilidade do DSL  
+    # Exige bloco para garantir previsibilidade do DSL  
     def when_condition(&block)
       raise ArgumentError, "block required for when_condition" unless block_given?
 
       @condition = block
     end
 
-    # Define a ação da regra
+    # Define a ação executada quando a condição é satisfeita
     # Aceita qualquer valor (symbol, string, hash, etc)
     def then_action(value)
       @action = value
     end
 
     # Constrói e retorna uma instância de Rule
-    # Garante que a DSL foi definida corretamente amtes da criação
+    # Garante que a DSL foi definida corretamente antes da criação
     # Falha cedo caso condition ou action estejam ausentes
     def build
       validate! 
 
       Rule.new(
+        name: @name,
         condition: @condition,
         action: @action,
         priority: @priority
@@ -44,5 +48,4 @@ module VerdictRules
       raise ArgumentError, "action is required (use then_action)" if @action.nil?
     end
   end
-  
 end
