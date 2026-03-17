@@ -24,16 +24,23 @@ module VerdictRules
     end
 
     # DSL: Define uma única regra usando bloco
-    # Exemplo:
-    #   engine.rule(priority: 10) do
-    #     when_condition { |ctx| ctx[:age] >= 18 }
-    #     then_action :approve
-    #   end
+    # Formas suportadas:
+    #   rule(priority: 10) { ... }
+    #   rule(:name, priority: 10) { ... }
+    #   rule(:name) { ... }
+    #
+    # Parâmetros:
+    # - name: identificador opcional da regra
+    # - priority: ordem de avaliação (maior primeiro)
+    #
+    # O bloco é executado no contexto de RuleBuilder, permitindo:
+    #   when_condition { |ctx| ... }
+    #   then_action :value
     # Retorna self para permitir chaining
-    def rule(priority: 0, &block)
+    def rule(name = nil, priority: 0, &block)
       raise ArgumentError, "block required" unless block_given?
 
-      builder = RuleBuilder.new(priority: priority)
+      builder = RuleBuilder.new(name: name, priority: priority)
       builder.instance_eval(&block)
       add_rule(builder.build)
 
@@ -41,18 +48,13 @@ module VerdictRules
     end
 
     # DSL: Define múltiplas regras em um bloco
+    # Executa o bloco no contexto da Engine, permitindo chamadas a `rule`
     # Exemplo:
     #   engine.rules do
-    #     rule(priority: 10) do
-    #       when_condition { |ctx| ctx[:age] >= 18 }
-    #       then_action :approve
-    #     end
-    #     
-    #     rule(priority: 5) do
-    #       when_condition { |ctx| ctx[:verified] }
-    #       then_action :grant_access
-    #     end
+    #     rule(:check_age, priority: 10) { ... }
+    #     rule(:check_verified, priority: 5) { ... }
     #   end
+    #
     # Retorna self para permitir chaining
     def rules(&block)
       return @rules unless block_given?

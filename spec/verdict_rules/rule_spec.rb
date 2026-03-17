@@ -50,6 +50,130 @@ RSpec.describe VerdictRules::Rule do
     end
   end
 
+  describe "#name" do
+    it "armazena o nome fornecido" do
+      rule = described_class.new(
+        name: :check_age,
+        condition: ->(ctx) { true },
+        action: :approve
+      )
+      
+      expect(rule.name).to eq(:check_age)
+    end
+
+    it "retorna nil quando name não é fornecido" do
+      rule = described_class.new(
+        condition: ->(ctx) { true },
+        action: :approve
+      )
+      
+      expect(rule.name).to be_nil
+    end
+
+    it "aceita name como symbol" do
+      rule = described_class.new(
+        name: :my_rule,
+        condition: ->(ctx) { true },
+        action: :approve
+      )
+      
+      expect(rule.name).to eq(:my_rule)
+    end
+
+    it "aceita name como string e converte para symbol" do
+      rule = described_class.new(
+        name: "my_rule",
+        condition: ->(ctx) { true },
+        action: :approve
+      )
+      
+      expect(rule.name).to eq(:my_rule)
+    end
+
+    it "valida que name não seja vazio quando fornecido" do
+      expect {
+        described_class.new(
+          name: "",
+          condition: ->(ctx) { true },
+          action: :approve
+        )
+      }.to raise_error(ArgumentError, /name cannot be empty/)
+    end
+
+    it "valida que name não seja apenas espaços em branco" do
+      expect {
+      described_class.new(
+          name: "   ",
+          condition: ->(ctx) { true },
+          action: :approve
+        )
+      }.to raise_error(ArgumentError, /name cannot be empty/)
+    end
+
+    it "valida que name seja symbol ou string" do
+      expect {
+        described_class.new(
+          name: 123,
+          condition: ->(ctx) { true },
+          action: :approve
+        )
+      }.to raise_error(ArgumentError, /name must be a symbol or string/)
+    end
+  end
+
+  describe "#inspect" do
+    it "inclui o name na representação quando presente" do
+      rule = described_class.new(
+        name: :check_age,
+        condition: ->(ctx) { ctx[:age] >= 18 },
+        action: :approve,
+        priority: 10
+      )
+      
+      inspection = rule.inspect
+      expect(inspection).to include("check_age")
+      expect(inspection).to include("priority=10")
+    end
+
+    it "não inclui nome quando não fornecido" do
+      rule = described_class.new(
+        condition: ->(ctx) { ctx[:age] >= 18 },
+        action: :approve,
+        priority: 10
+      )
+      
+      inspection = rule.inspect
+      expect(inspection).to include("priority=10")
+      expect(inspection).not_to include("name=")
+    end
+  end
+
+  describe "#to_h" do
+    it "inclui nome no hash quando presente" do
+      rule = described_class.new(
+        name: :check_age,
+        condition: ->(ctx) { true },
+        action: :approve,
+        priority: 5
+      )
+      
+      hash = rule.to_h
+      expect(hash[:name]).to eq(:check_age)
+      expect(hash[:priority]).to eq(5)
+      expect(hash[:action]).to eq(:approve)
+    end
+
+    it "retorna nil para name quando não for fornecido" do
+      rule = described_class.new(
+        condition: ->(ctx) { true },
+        action: :approve
+      )
+      
+      hash = rule.to_h
+      expect(hash[:name]).to be_nil
+    end
+  end
+
   describe "comparação de prioridades" do
     it "permite comparar regras por prioridade" do
       rule1 = described_class.new(
