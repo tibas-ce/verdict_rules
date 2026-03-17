@@ -57,6 +57,112 @@ RSpec.describe "VerdictRules DSL" do
     end
   end
 
+  describe "Engine#rule com name" do
+    it "aceita nome como primeiro argumento" do
+      engine = VerdictRules::Engine.new({ age: 25 })
+      
+      expect {
+        engine.rule :check_age do
+          when_condition { |ctx| ctx[:age] >= 18 }
+          then_action :approve
+        end
+      }.not_to raise_error
+    end
+
+    it "cria regra com nome fornecido" do
+      engine = VerdictRules::Engine.new({ age: 25 })
+      
+      engine.rule :check_age do
+        when_condition { |ctx| ctx[:age] >= 18 }
+        then_action :approve
+      end
+      
+      expect(engine.rules.first.name).to eq(:check_age)
+    end
+
+    it "aceita name e priority juntos" do
+      engine = VerdictRules::Engine.new({ age: 25 })
+      
+      engine.rule :check_age, priority: 10 do
+        when_condition { |ctx| ctx[:age] >= 18 }
+        then_action :approve
+      end
+      
+      rule = engine.rules.first
+      expect(rule.name).to eq(:check_age)
+      expect(rule.priority).to eq(10)
+    end
+
+    it "aceita apenas priority sem nome" do
+      engine = VerdictRules::Engine.new({ age: 25 })
+      
+      engine.rule priority: 10 do
+        when_condition { |ctx| ctx[:age] >= 18 }
+        then_action :approve
+      end
+      
+      rule = engine.rules.first
+      expect(rule.name).to be_nil
+      expect(rule.priority).to eq(10)
+    end
+
+    it "valida nome inválido via DSL" do
+      engine = VerdictRules::Engine.new({})
+
+      expect {
+        engine.rule "" do
+          when_condition { true }
+          then_action :ok
+        end
+      }.to raise_error(ArgumentError, /name cannot be empty/)
+    end
+
+    it "converte nome string para symbol via DSL" do
+      engine = VerdictRules::Engine.new({})
+
+      engine.rule "check_age" do
+        when_condition { true }
+        then_action :ok
+      end
+
+      expect(engine.rules.first.name).to eq(:check_age)
+    end
+
+    it "permite acessar o nome da regra aplicada" do
+      engine = VerdictRules::Engine.new({ value: true })
+
+      engine.rule :my_rule, priority: 10 do
+        when_condition { |ctx| ctx[:value] }
+        then_action :ok
+      end
+
+      result = engine.evaluate
+
+      expect(result.matched_rule.name).to eq(:my_rule)
+    end
+  end
+
+  describe "Engine#rule (batch) com nomes" do
+    it "permite definir múltiplas regras nomeadas" do
+      engine = VerdictRules::Engine.new({ age: 25, verified: true })
+      
+      engine.rules do
+        rule :check_age, priority: 10 do
+          when_condition { |ctx| ctx[:age] >= 18 }
+          then_action :approve
+        end
+        
+        rule :check_verified, priority: 5 do
+          when_condition { |ctx| ctx[:verified] }
+          then_action :grant_access
+        end
+      end
+      
+      expect(engine.rules[0].name).to eq(:check_age)
+      expect(engine.rules[1].name).to eq(:check_verified)
+    end
+  end
+
   describe "Engine#rules (plural) batch definition" do
     it "permite definir múltiplas regras em um bloco" do
       engine = VerdictRules::Engine.new({ age: 25, verified: true })
