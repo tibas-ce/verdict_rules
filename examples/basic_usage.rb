@@ -17,16 +17,19 @@ engine = VerdictRules::Engine.new(context)
 
 # Adicionar regras
 minor_rule = VerdictRules::Rule.new(
+  name: :minor_restriction,
   condition: ->(ctx) { ctx[:age] < 18 },
   action: :reject_minor
 )
 
 verified_adult_rule = VerdictRules::Rule.new(
+  name: :verified_adult,
   condition: ->(ctx) { ctx[:age] >= 18 && ctx[:verified] },
   action: :approve_verified_adult
 )
 
 adult_rule = VerdictRules::Rule.new(
+  name: :adult,
   condition: ->(ctx) { ctx[:age] >= 18 },
   action: :approve_adult
 )
@@ -47,7 +50,7 @@ puts
 puts "Resultado da Avaliação:"
 puts "  Valor: #{result.value}"
 puts "  Regra bateu? #{result.matched?}"
-puts "  Regra aplicada: #{result.matched_rule.inspect}"
+puts "  Regra aplicada: #{result.matched_rule.name}"
 puts
 puts "Inspeção:"
 puts "  #{result.inspect}"

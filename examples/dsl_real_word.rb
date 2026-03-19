@@ -21,7 +21,7 @@ engine = VerdictRules::Engine.new(purchase)
 # As regras são avaliadas por prioridade (maior primeiro). A primeira regra que bater define o resultado final
 engine.rules do
   # Regra 1: Bloqueio de segurança (exceção crítica)
-  rule priority: 100 do
+  rule :security_lock, priority: 100 do
     when_condition { |ctx| ctx[:previous_chargebacks] > 2 }
     then_action({
       status: :blocked,
@@ -29,8 +29,8 @@ engine.rules do
     })
   end
 
-  # Regra 2: Cliente gold tem aprovação atomática
-  rule priority: 50 do
+  # Regra 2: Cliente gold tem aprovação automática
+  rule :gold_customer, priority: 50 do
     when_condition { |ctx| 
       ctx[:customer_tier] == :gold &&
       ctx[:amount] <= 10000
@@ -43,7 +43,7 @@ engine.rules do
   end
 
   # Regra 3: Conta nova requer revisão manual
-  rule priority: 40 do
+  rule :new_account, priority: 40 do
     when_condition { |ctx| ctx[:account_age_days] < 30 }
     then_action({
       status: :pending,
@@ -53,7 +53,7 @@ engine.rules do
   end
 
   # Regra 4: Compras internacionais acima de certo valor
-  rule priority: 30 do
+  rule :international_purchases, priority: 30 do
     when_condition { |ctx| 
       ctx[:shipping_country] != "BR" && 
       ctx[:amount] > 3000 
@@ -67,7 +67,7 @@ engine.rules do
   
   # Regra 5: Aprovação padrão
   # Regra final de fallback: garante que toda avaliação produza uma decisão explícita
-  rule priority: 0 do
+  rule :standard_approval, priority: 0 do
     when_condition { |_ctx| true }
     then_action({
       status: :pending,
@@ -94,7 +94,7 @@ puts "Resultado da Avaliação:"
 puts "  Status: #{result.value[:status]}"
 puts "  Razão: #{result.value[:reason]}"
 puts "  Revisão necessária: #{result.value[:review_required]}"
-puts "  Regra aplicada: priority=#{result.matched_rule.priority}"
+puts "  Regra aplicada: #{result.matched_rule.name} (priority=#{result.matched_rule.priority})"
 
 puts
 puts "A DSL torna as regras de negócio claras e manuteníveis!"
