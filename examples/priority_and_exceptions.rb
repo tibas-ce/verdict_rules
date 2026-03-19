@@ -21,6 +21,7 @@ engine = VerdictRules::Engine.new(context)
 # Regra 1: Score alto (prioridade baixa - regra geral)
 engine.add_rule(
   VerdictRules::Rule.new(
+    name: :high_credit_score,
     condition: ->(ctx) { ctx[:credit_score] >= 700 },
     action: { status: :approved, limit: 5000, reason: "Bom score de crédito" },
     priority: 1
@@ -30,6 +31,7 @@ engine.add_rule(
 # Regra 2: Conta antiga (prioridade média)
 engine.add_rule(
   VerdictRules::Rule.new(
+    name: :trusted_costumer,
     condition: ->(ctx) { ctx[:account_age_months] >= 12 },
     action: { status: :approved, limit: 7000, reason: "Cliente com histórico consolidado" },
     priority: 5
@@ -39,6 +41,7 @@ engine.add_rule(
 # Regra 3: Sem verificação de renda (prioridade alta - restrição)
 engine.add_rule(
   VerdictRules::Rule.new(
+    name: :income_not_verified,
     condition: ->(ctx) { !ctx[:verified_income] },
     action: { status: :manual_review, limit: 2000, reason: "Renda não verificada" },
     priority: 10
@@ -49,6 +52,7 @@ engine.add_rule(
 # Regras de prioridade mais alta representam exceções ou restrições que devem sobrescrever regras gerais de aprovação.
 engine.add_rule(
   VerdictRules::Rule.new(
+    name: :vip_overrid,
     condition: ->(ctx) { ctx[:vip_customer] },
     action: { status: :approved, limit: 50000, reason: "Cliente VIP" },
     priority: 100
@@ -68,7 +72,7 @@ puts "Resultado:"
 puts "  Status: #{result.value[:status]}"
 puts "  Limite: R$ #{result.value[:limit]}"
 puts "  Razão: #{result.value[:reason]}"
-puts "  Prioridade da regra: #{result.matched_rule.priority}"
+puts "  Regra aplicada: #{result.matched_rule.name} Prioridade: #{result.matched_rule.priority}"
 puts
 
 puts "=" * 60
@@ -96,7 +100,7 @@ puts "Resultado:"
 puts "  Status: #{vip_result.value[:status]}"
 puts "  Limite: R$ #{vip_result.value[:limit]}"
 puts "  Razão: #{vip_result.value[:reason]}"
-puts "  Prioridade da regra: #{vip_result.matched_rule.priority}"
+puts "  Regra aplicada: #{vip_result.matched_rule.name} Prioridade: #{vip_result.matched_rule.priority}"
 puts
 puts "Regra VIP (priority=100) sobrescreve a restrição!"
 puts
