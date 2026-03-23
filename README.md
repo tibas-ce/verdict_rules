@@ -6,7 +6,7 @@
 
 Defina regras de negócio complexas de forma clara, debuggável e pronta para produção.
 
-[![CI](https://github.com/tibas-ce/verdict_rules/workflows/CI/badge.svg)]
+[![CI](https://github.com/tibas-ce/verdict_rules/workflows/CI/badge.svg)](https://github.com/tibas-ce/verdict_rules/actions)
 [![Gem Version](https://img.shields.io/badge/status-not_published-lightgrey.svg)](https://rubygems.org/gems/verdict_rules)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
